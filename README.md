@@ -75,7 +75,35 @@ source install/local_setup.bash
 ros2 launch sonar3d sonar3d.launch.py
 ```
 
-### 6. License
+### 6. Playback of .sonar files and recording to ROS2 bagfile
+
+A script has been included, which onverts Sonar 3D-15 .sonar files to ROS2 bagfiles.
+
+Requirements:
+- Tested with ROS2 Humble and Jazzy
+- numpy, protobuf, sonar_3d_15_protcol_pb2.py
+- sensor_msgs, std_msgs, builtin_interfaces
+- cv_bridge (for ROS2)
+
+Usage:
+1. Start recording in one terminal:
+```
+ros2 bag record -o <output_bag_dir> /sonar3d/range_image /sonar3d/point_cloud
+```
+2. In another terminal, run:
+```
+python3 sonar_to_bag.py --file <sonar_file.sonar> --realtime-factor 1.0
+```
+
+The sonar_to_bag.py has been shared by Marios Xanthidis of SINTEF Ocean, with acknowledgements:
+
+ - Supported by the Research Council of Norway (EchoNav: NO-359447)
+ - Filtering and name conventions adapted from Alberto Quattrini Li @ Dartmouth
+   His repository for ROS1 integration of the Sonar 3D-15 can be found in:
+   https://github.com/quattrinili/Sonar-3D-15-api-example/tree/ros1
+
+### 7. License
 
 This package is distributed under the MIT License.
+
 
