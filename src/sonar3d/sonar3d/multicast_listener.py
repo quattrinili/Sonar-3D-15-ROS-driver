@@ -39,6 +39,26 @@ class TimerNode(Node):
             sample_time = 0.01          # sample time in seconds
             self.create_timer(sample_time, self.timer_callback)
             self.get_logger().info(f'Timer Node initialized with {1/sample_time} Hz')
+            # Enable the acoustics on the sonar
+            resp = set_acoustics(self.sonar_ip, True)
+            self.get_logger().info(f'Enabling acoustics response: {describe_response(self.sonar_ip, resp)}')
+
+            resp = enable_multicast(self.sonar_ip)
+            self.get_logger().info(f'Enabling multicast response: {describe_response(self.sonar_ip, resp)}')
+
+            # Set up a UDP socket with multicast membership
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.sock.bind(('', self.PORT))
+
+            group = socket.inet_aton(self.MULTICAST_GROUP)
+            mreq = struct.pack('4sL', group, socket.INADDR_ANY)
+            self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+
+            self.get_logger().info(f"Listening for Sonar 3D-15 RIP1 packets on {self.MULTICAST_GROUP}:{self.PORT}...")
+
+            if self.sonar_ip != "":
+                self.get_logger().info(f"Filtering packets from IP: {self.sonar_ip}")
         else:
             from std_msgs.msg import UInt8MultiArray
             self.sonar_ip = ""  # No IP filtering in non-realtime mode
@@ -52,26 +72,7 @@ class TimerNode(Node):
         self.pointcloud_publisher_ = self.create_publisher(PointCloud2, 'sonar_point_cloud', 10)
         self.image_publisher_ = self.create_publisher(Image, 'sonar_range_image', 10)
 
-        # Enable the acoustics on the sonar
-        resp = set_acoustics(self.sonar_ip, True)
-        self.get_logger().info(f'Enabling acoustics response: {describe_response(self.sonar_ip, resp)}')
-
-        resp = enable_multicast(self.sonar_ip)
-        self.get_logger().info(f'Enabling multicast response: {describe_response(self.sonar_ip, resp)}')
-
-        # Set up a UDP socket with multicast membership
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind(('', self.PORT))
-
-        group = socket.inet_aton(self.MULTICAST_GROUP)
-        mreq = struct.pack('4sL', group, socket.INADDR_ANY)
-        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-
-        self.get_logger().info(f"Listening for Sonar 3D-15 RIP1 packets on {self.MULTICAST_GROUP}:{self.PORT}...")
-
-        if self.sonar_ip != "":
-            self.get_logger().info(f"Filtering packets from IP: {self.sonar_ip}")
+        
 
 
     def timer_callback(self):
