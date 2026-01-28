@@ -10,7 +10,8 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 {'IP': '192.168.194.96'},  # Change to your sonar IP, '192.168.194.96' is the fallback ip.
-                {'speed_of_sound': 1491}
+                {'speed_of_sound': 1491},
+                {'realtime': True} # Set to False to read from bag file instead of live sonar
             ]
         )
     ])
