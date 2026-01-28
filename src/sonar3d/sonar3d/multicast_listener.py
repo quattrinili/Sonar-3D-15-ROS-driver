@@ -28,13 +28,25 @@ class TimerNode(Node):
         self.declare_parameter('IP', '192.168.194.96')# '192.168.194.96' is the fallback ip, to change this, edit the launchfile.
         self.declare_parameter('speed_of_sound', 1491)    # setting this takes ~20s
 
-        self.sonar_ip = self.get_parameter('IP').get_parameter_value().string_value
+        self.declare_parameter('realtime', True)    # setting this takes ~20s
+
         self.sonar_speed_of_sound = self.get_parameter('speed_of_sound').get_parameter_value().integer_value
+        self.realtime = self.get_parameter('realtime').get_parameter_value().bool_value
 
         # Create a timer that calls the timer_callback every sample_time seconds 
-        sample_time = 0.01          # sample time in seconds
-        self.create_timer(sample_time, self.timer_callback)
-        self.get_logger().info(f'Timer Node initialized with {1/sample_time} Hz')
+        if self.realtime:
+            self.sonar_ip = self.get_parameter('IP').get_parameter_value().string_value
+            sample_time = 0.01          # sample time in seconds
+            self.create_timer(sample_time, self.timer_callback)
+            self.get_logger().info(f'Timer Node initialized with {1/sample_time} Hz')
+        else:
+            from std_msgs.msg import UInt8MultiArray
+            self.sonar_ip = ""  # No IP filtering in non-realtime mode
+            self.raw_subscriber_ = self.create_subscription(
+                UInt8MultiArray,
+                'sonar_raw_data',
+                self.raw_data_callback,
+                10)
 
         # Create a publisher that publishes the point cloud data
         self.pointcloud_publisher_ = self.create_publisher(PointCloud2, 'sonar_point_cloud', 10)
@@ -70,6 +82,13 @@ class TimerNode(Node):
         if not (addr[0] == self.sonar_ip or addr[0] == '192.168.194.96'):
             self.get_logger().info(f"Received packet from {addr[0]}. Data was received from an IP that does not match the declared SONAR_IP ({self.sonar_ip}), so the packet will be skipped.")
             return
+        
+        self.process_packet(data)
+
+    def raw_data_callback(self, msg):
+        self.process_packet(bytes(msg.data))
+
+    def process_packet(self, data):
 
         payload = parse_rip1_packet(data)
         if payload is None:
